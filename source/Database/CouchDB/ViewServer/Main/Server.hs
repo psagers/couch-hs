@@ -136,8 +136,7 @@ processReduce codes args = do
         Left err    -> return $ compileErrorValue err
         Right funcs -> let keys = map reduceKey args
                            values =  map reduceValue args
-                           outputs = map (\f -> execReduceFunc f keys values False) funcs
-                       in  reduceResponse outputs
+                       in  reduceResponse $ map (\f -> execReduceFunc f keys values False) funcs
 
 
 processRereduce :: [Text] -> [J.Value] -> LineProcessor ResponseValue
@@ -145,8 +144,7 @@ processRereduce codes values = do
     eitherFuncs <- eitherReduceFuncs codes
     case eitherFuncs of
         Left err    -> return $ compileErrorValue err
-        Right funcs -> let outputs = map (\f -> execReduceFunc f [] values True) funcs
-                       in  reduceResponse outputs
+        Right funcs -> reduceResponse $ map (\f -> execReduceFunc f [] values True) funcs
 
 
 reduceResponse :: [ReduceOutput] -> LineProcessor ResponseValue
