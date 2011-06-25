@@ -158,8 +158,8 @@ module Database.CouchDB.ViewServer
     >\doc -> let net credits shares = let debts = shareAmounts (sumMap credits) (sumMap shares) shares
     >                                 in  M.unionWith (+) credits debts
     >
-    >            sumMap = M.fold (+) 0
     >            shareAmounts totCredit totShares = M.map (\shares -> -(shares / totShares) * totCredit)
+    >            sumMap = M.fold (+) 0
     >
     >        in  do date <- doc .: "date" :: ViewMap T.Text
     >               what <- doc .:? "what" :: ViewMap (Maybe T.Text) -- Optional field
@@ -170,9 +170,10 @@ module Database.CouchDB.ViewServer
     >
     >               emit date $ object ["net" .= net credits shares, "what" .= what]
 
-    >\_ values _ -> do objects <- parseJSONList values :: ViewReduce [J.Object]
-    >                  nets <- mapM (.: "net") objects :: ViewReduce [M.Map T.Text Double]
-    >                  return $ L.foldl' (M.unionWith (+)) M.empty nets
+    >\_ values rereduce -> L.foldl' (M.unionWith (+)) M.empty <$>
+    >    case rereduce of
+    >        False -> mapM (.: "net") =<< parseJSONList values :: ViewReduce [(M.Map T.Text Double)]
+    >        True  -> parseJSONList values :: ViewReduce [(M.Map T.Text Double)]
 
     Map results:
 
