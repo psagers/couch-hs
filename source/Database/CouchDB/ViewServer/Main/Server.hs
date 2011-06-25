@@ -36,23 +36,25 @@ import Database.CouchDB.ViewServer.Main.Server.Command
 
 
 data ServerState = ServerState
- { stateMapFuncs :: [MapFunc]
+ { stateContext :: Context
+ , stateMapFuncs :: [MapFunc]
  , stateReduceFuncs :: [(Text, ReduceFunc)]
  }
 
-initialServerState = ServerState
- { stateMapFuncs = []
+initialServerState context = ServerState
+ { stateContext = context
+ , stateMapFuncs = []
  , stateReduceFuncs = []
  }
 
-type LineProcessor a = StateT ServerState (ReaderT Context IO) a
+type LineProcessor a = StateT ServerState IO a
 
 type ResponseValue = J.Value
 
 
 runServer :: Context -> IO ExitCode
 runServer context = do hSetBuffering stdout LineBuffering
-                       runReaderT (evalStateT processLines initialServerState) context
+                       evalStateT processLines $ initialServerState context
                        return ExitSuccess
 
 
@@ -79,7 +81,7 @@ processNextLine = do
 {- Log the input line to a file, if requested in the command-line arguments. -}
 logInputLine :: B.ByteString -> LineProcessor ()
 logInputLine line = do
-    commandLog <- askInputLog
+    commandLog <- getInputLog
     case commandLog of
         Just handle -> liftIO $ B.hPutStrLn handle line
         Nothing     -> return ()
@@ -115,7 +117,7 @@ processReset = do
 
 processAddFun :: Text -> LineProcessor ResponseValue
 processAddFun code = do
-    mapInterpreter <- askMapFuncInterpreter
+    mapInterpreter <- getMapFuncInterpreter
     eitherFunc <- liftIO $ H.runInterpreter $ mapInterpreter (B.unpack $ T.E.encodeUtf8 code)
     case eitherFunc of
         Left err   -> return $ compileErrorValue $ "Map: " ++ show err
@@ -159,7 +161,7 @@ reduceResponse outputs =
 -}
 eitherReduceFuncs :: [Text] -> LineProcessor (Either String [ReduceFunc])
 eitherReduceFuncs codes = do
-    reduceInterpreter <- askReduceFuncInterpreter
+    reduceInterpreter <- getReduceFuncInterpreter
     eitherFuncs <- mapM getReduceFunc codes
     let errors = lefts eitherFuncs
     if null errors
@@ -177,7 +179,7 @@ getReduceFunc code = do
 
 loadReduceFunc :: Text -> LineProcessor (Either H.InterpreterError ReduceFunc)
 loadReduceFunc code = do
-    interpreter <- askReduceFuncInterpreter
+    interpreter <- getReduceFuncInterpreter
     eitherFunc <- liftIO $ H.runInterpreter $ interpreter (B.unpack $ T.E.encodeUtf8 code)
     case eitherFunc of
         Left _     -> return eitherFunc
@@ -192,9 +194,12 @@ couchLog message = L.putStrLn $ J.encode $ toJSON $ LogMessage message
 {-
     Monad transformer wrappers.
 -}
-askMapFuncInterpreter = ctxMapFuncInterpreter <$> lift ask
-askReduceFuncInterpreter = ctxReduceFuncInterpreter <$> lift ask
-askInputLog = ctxInputLog <$> lift ask
+getMapFuncInterpreter = ctxMapFuncInterpreter <$> getContext
+getReduceFuncInterpreter = ctxReduceFuncInterpreter <$> getContext
+getInputLog = ctxInputLog <$> getContext
+
+getContext :: LineProcessor Context
+getContext = stateContext <$> get
 
 getMapFuncs :: LineProcessor [MapFunc]
 getMapFuncs = stateMapFuncs <$> get
