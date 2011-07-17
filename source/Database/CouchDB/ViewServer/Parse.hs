@@ -1,5 +1,3 @@
-{-# OPTIONS_HADDOCK hide #-}
-
 module Database.CouchDB.ViewServer.Parse
     (
 {- |
@@ -34,9 +32,6 @@ class (Monad m) => MonadParser m where
 
 instance MonadParser Parser where
     liftParser = id
-
-instance (Monoid w, MonadParser m) => MonadParser (WriterT w m) where
-    liftParser = lift . liftParser
 
 
 {- | Attempts to parse a JSON value into a given type. This is typically used

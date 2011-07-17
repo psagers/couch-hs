@@ -1,5 +1,3 @@
-{-# OPTIONS_HADDOCK hide #-}
-
 module Database.CouchDB.ViewServer.Internal where
 
 import Data.Aeson
