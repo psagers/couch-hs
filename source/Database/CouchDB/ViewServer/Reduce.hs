@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 module Database.CouchDB.ViewServer.Reduce
@@ -27,6 +27,8 @@ import Data.Aeson (toJSON, ToJSON)
 import Data.Aeson.Types (Value(..), Object, Parser, parseMaybe)
 
 import Control.Applicative
+import Control.Monad (Monad, MonadPlus)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Writer (WriterT, tell, runWriterT)
 import qualified Language.Haskell.Interpreter as H
 
@@ -36,16 +38,16 @@ import Database.CouchDB.ViewServer.Parse
 
 type ReduceOutput = (Value, [LogMessage])
 
-type ViewReduceT m a = WriterT [LogMessage] m a
-
 
 {- | The monad within which a reduce computation takes place. This is a
-     transformation of the 'Data.Aeson.Types.Parser' monad, although the precise
-     nature and depth of the transformation is an internal detail and subject to
-     change. ViewReduceT is guaranteed to be an instance of the 'MonadParser'
-     class, allowing you to parse JSON structures.
+     transformation of the 'Data.Aeson.Types.Parser' monad, which is accessible
+     through the 'MonadParser' typeclass.
 -}
-type ViewReduce a = ViewReduceT Parser a
+newtype ViewReduce a = ViewReduce { runViewReduce :: WriterT [LogMessage] Parser a }
+    deriving(Monad, Functor, MonadPlus, Applicative, Alternative)
+
+instance MonadParser ViewReduce where
+    liftParser = ViewReduce . lift
 
 
 {- | The type of your reduce functions as they are stored in CouchDB. The trivial
@@ -71,7 +73,7 @@ reduceFuncInterpreter opts mods source = do
 
 
 execReduceFunc :: ReduceFunc -> [Value] -> [Value] -> Bool -> ReduceOutput
-execReduceFunc reduceFunc keys values rereduce = fromMaybe (Null, []) $ parseMaybe runWriterT (runReduceFunc reduceFunc keys values rereduce)
+execReduceFunc reduceFunc keys values rereduce = fromMaybe (Null, []) $ parseMaybe runWriterT (runViewReduce $ runReduceFunc reduceFunc keys values rereduce)
 
 
 {- | Send a log message to the CouchDB server. Note that log messages are only
@@ -79,4 +81,4 @@ execReduceFunc reduceFunc keys values rereduce = fromMaybe (Null, []) $ parseMay
      of a failure, look at 'Control.Applicative.Alternative'.
 -}
 logMsg :: String -> ViewReduce ()
-logMsg msg = tell [LogMessage msg]
+logMsg msg = ViewReduce $ tell [LogMessage msg]

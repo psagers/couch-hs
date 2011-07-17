@@ -1,5 +1,5 @@
 {- |
-    This ia a CouchDB view server in and for Haskell. With it, you can define
+    This is a CouchDB view server in and for Haskell. With it, you can define
     design documents that use Haskell functions to perform map/reduce
     operations. Database.CouchDB.ViewServer is just a container; see the
     submodules for API documentation.
@@ -49,8 +49,10 @@ module Database.CouchDB.ViewServer
     In addition to the server mode, @couch-hs@ has some special modes to aid
     development. CouchDB isn't very good at reporting errors in view functions,
     so the following modes can be used to make sure your functions compile
-    before installing them into a view. To ensure valid results, be sure to
-    match the @couch-hs@ options with those in CouchDB's config file.
+    before installing them into a view. These can be run manually, although
+    they're especially useful when integrated into your editor. They can also
+    serve as a sanity check in your deployment process. To ensure valid results,
+    be sure to match the @couch-hs@ options with those in CouchDB's config file.
 
     [@couch-hs \[options\] -M \[CODE|\@PATH\] ...@] Attempt to compile one or
     more map functions. Each argument can either be a source string or a path to

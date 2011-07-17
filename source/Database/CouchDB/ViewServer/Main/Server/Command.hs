@@ -39,6 +39,7 @@ instance FromJSON ViewCommand where
                 String "reduce"   -> parseReduce args
                 String "rereduce" -> parseRereduce args
                 String s          -> fail $ "Unrecognized view command: " ++ unpack s
+                _                 -> typeMismatch "view command" value
         | otherwise = typeMismatch "view command" value
         where
             args :: [Value]

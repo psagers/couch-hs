@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_HADDOCK prune #-}
 
 module Database.CouchDB.ViewServer.Map
@@ -33,6 +33,7 @@ import qualified Data.Aeson.Types (parseJSON)
 import Data.Text (Text, unpack)
 
 import Control.Applicative
+import Control.Monad (Monad, MonadPlus)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Writer (WriterT, tell, execWriterT)
 
@@ -46,16 +47,16 @@ data MapOutput =
     Emit Value Value |
     Log LogMessage
 
-type ViewMapT m a = WriterT [MapOutput] m a
-
 
 {- | The monad within which a map computation takes place. This is a
-     transformation of the 'Data.Aeson.Types.Parser' monad, although the precise
-     nature and depth of the transformation is an internal detail and subject to
-     change. ViewMapT is guaranteed to be an instance of the 'MonadParser'
-     class, allowing you to parse JSON structures.
+     transformation of the 'Data.Aeson.Types.Parser' monad, which is accessible
+     through the 'MonadParser' typeclass.
 -}
-type ViewMap a = ViewMapT Parser a
+newtype ViewMap a = ViewMap { runViewMap :: WriterT [MapOutput] Parser a }
+    deriving(Monad, Functor, MonadPlus, Applicative, Alternative)
+
+instance MonadParser ViewMap where
+    liftParser = ViewMap . lift
 
 
 {- | The type of your map functions as they are stored in CouchDB. The trivial
@@ -80,7 +81,7 @@ mapFuncInterpreter opts mods source = do
 
 
 execMapFunc :: MapFunc -> Object -> [MapOutput]
-execMapFunc mapFunc doc = fromMaybe [] $ parseMaybe execWriterT (runMapFunc mapFunc doc)
+execMapFunc mapFunc doc = fromMaybe [] $ parseMaybe execWriterT (runViewMap $ runMapFunc mapFunc doc)
 
 
 emits :: [MapOutput] -> [MapOutput]
@@ -111,7 +112,7 @@ instance ToJSON MapOutput where
 -}
  
 emit :: (ToJSON k, ToJSON v) => k -> v -> ViewMap ()
-emit key value = tell [Emit (toJSON key) (toJSON value)]
+emit key value = ViewMap $ tell [Emit (toJSON key) (toJSON value)]
 
 
 {- | Same as 'emit', but with wrapped key and value.
@@ -130,4 +131,4 @@ emitM key value = do
      of a failure, look at 'Control.Applicative.Alternative'.
 -}
 logMsg :: String -> ViewMap ()
-logMsg msg = tell [Log $ LogMessage msg]
+logMsg msg = ViewMap $ tell [Log $ LogMessage msg]
