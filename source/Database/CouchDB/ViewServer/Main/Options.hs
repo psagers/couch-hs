@@ -54,6 +54,7 @@ defaultOptions = Options
 -}
 standardModules =
  [ ("Prelude", Nothing)
+ , ("Data.Ratio", Nothing)
  , ("Data.Maybe", Nothing)
  , ("Data.List", Just "L")
  , ("Data.Map", Just "M")

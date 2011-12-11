@@ -29,6 +29,7 @@ module Database.CouchDB.ViewServer
         
         >import Prelude
         >import Data.Maybe
+        >import Data.Ratio
         >import Data.List as L
         >import Data.Map as M
         >improt Data.Text as T
@@ -106,8 +107,8 @@ module Database.CouchDB.ViewServer
       case of map functions, it's the 'M.emit' function; for the reduce
       functions, it's the return type. In either case, since there is no
       top-level type annotation, it will be necessary to include annotations at
-      key points in the functions. I find that annotations usually belong at the
-      points where the JSON objects are parsed.
+      key points in the functions. I find that annotations usually belong at
+      the points where the JSON objects are parsed.
 -}
 
       -- ** Map Functions
@@ -119,10 +120,10 @@ module Database.CouchDB.ViewServer
     to emit @null@, pass 'M.Null' or 'Nothing' (Null is easier, as it doesn't
     require annotation).
     
-     Map functions will generally use 'M..:' and 'M..:?' to access fields in the
+    Map functions will generally use 'M..:' and 'M..:?' to access fields in the
     object and may need 'M.parseJSON' to parse embedded values.
     
-     If the map computation fails, the result will be equivalent to @return ()@.
+    If the map computation fails, the result will be equivalent to @return ()@.
 -}
       M.MapSignature
 
@@ -130,22 +131,22 @@ module Database.CouchDB.ViewServer
 {- |
     A reduce function takes three arguments: a list of keys as JSON 'J.Value's,
     a list of values as JSON 'J.Value's, and a 'Bool' for rereduce. The
-    'R.ViewReduce' monad may wrap any value that can be converted by 'J.toJSON';
-    a type annotation will generally be necessary.
+    'R.ViewReduce' monad may wrap any value that can be converted by
+    'J.toJSON'; a type annotation will generally be necessary.
     
-     A reduce function will normally use 'R.parseJSONList' to parse the JSON
+    A reduce function will normally use 'R.parseJSONList' to parse the JSON
     values into primitive types for processing.
     
-     If the reduce computation fails, the result will be equivalent to @return
+    If the reduce computation fails, the result will be equivalent to @return
     Null@.
 -}
     , R.ReduceSignature
 
       -- ** Example
 {- |
-    Here's a larger example that shows off a more practical application. Suppose
-    a set of documents representing shared expenses. We'll include a couple of
-    malformed documents for good measure.
+    Here's a larger example that shows off a more practical application.
+    Suppose a set of documents representing shared expenses. We'll include a
+    couple of malformed documents for good measure.
 
     >{"date": "2011-06-05", "what": "Dinner", "credits": {"Alice": 80}, "shares": {"Alice": 1, "Bob": 2, "Carol": 1}}
     >{"date": "2011-06-17", "credits": {"Bob": 75}, "shares": {"Bob": 1, "Doug": 1}}
